@@ -1,16 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Keyboard Recognition</title>
   <meta charset="UTF-8">
+  <title>Keyboard Recognition</title>
   <style>
     body {
       display: flex;
-      justify-content: center; /* centers horizontally */
-      align-items: center;    /* centers vertically */
-      height: 100vh;          /* full viewport height */
+      flex-direction: column;
+      justify-content: center; /* vertical center */
+      align-items: center;    /* horizontal center */
+      height: 100vh;
       background-color: #f0f2f5;
       font-family: Arial, sans-serif;
+      margin: 0;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 3em;
+      font-family: Verdana, sans-serif;
+      margin-bottom: 30px;
     }
 
     .editable-box {
@@ -25,9 +34,26 @@
       font-size: 16px;
       color: #333333;
       transition: box-shadow 0.2s, border-color 0.2s;
+      margin-bottom: 20px;
     }
 
     .editable-box:focus {
+      border-color: #007bff;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+
+    input, textarea {
+      width: 400px;
+      padding: 10px;
+      margin-bottom: 20px;
+      border: 2px solid #4a90e2;
+      border-radius: 8px;
+      font-size: 16px;
+      outline: none;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+
+    input:focus, textarea:focus {
       border-color: #007bff;
       box-shadow: 0 6px 20px rgba(0,0,0,0.15);
     }
@@ -36,17 +62,14 @@
 
 <body>
 
-<h1 style="text-align: center; font-size:300%; font-family:verdana">Keyboard Recognition</h1>
+  <h1>Keyboard Recognition</h1>
 
-<div contenteditable="true" style="width:400px;height:200px;border:1px solid black;">
-Type here...
-</div>
+  <div class="editable-box" contenteditable="true">
+    Type here...
+  </div>
 
-<input type="text">
-
-<textarea></textarea>
-
-<div contenteditable="true"></div>
+  <input type="text" placeholder="Input field here">
+  <textarea placeholder="Textarea here"></textarea>
 
 </body>
 </html>
