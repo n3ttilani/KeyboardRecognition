@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collab Website</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="typing-box" contenteditable="true">Start typing here...</div>
+    <script src="script.js"></script>
+</body>
+</html>
