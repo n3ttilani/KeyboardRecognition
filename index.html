@@ -7,16 +7,12 @@
     body {
       display: flex;
       flex-direction: column;
-      justify-content: center; /* center vertically */
-      align-items: center;     /* center horizontally */
+      justify-content: center;
+      align-items: center;
       height: 100vh;
       margin: 0;
       font-family: Arial, sans-serif;
       background-color: #f0f2f5;
-    }
-
-    h1 {
-      margin-bottom: 20px;
     }
 
     textarea {
@@ -27,7 +23,7 @@
       border: 2px solid #4a90e2;
       border-radius: 10px;
       outline: none;
-      resize: none; /* disables manual resizing */
+      resize: none;
     }
 
     textarea:focus {
@@ -37,9 +33,71 @@
 </head>
 <body>
 
-  <h1>Keyboard Recognition</h1>
+<h1>Keyboard Recognition</h1>
 
-  <textarea placeholder="Type here..."></textarea>
+<textarea id="box" placeholder="Type here..."></textarea>
+
+<script>
+class User {
+  constructor() {
+    this.hold = new Float32Array(26);       // average hold time per key
+    this.holdCount = new Int32Array(26);    // how many times each key pressed
+    this.flight = Array.from({length:26}, () => new Float32Array(26)); // average flight time
+    this.flightCount = Array.from({length:26}, () => new Int32Array(26));
+    this.last = null;
+    this.pressed = {};  // key -> timestamp
+  }
+
+  pressing(key) {
+    if (!key.match(/[a-zA-Z]/)) return; // ignore non-letters
+    const idx = key.toLowerCase().charCodeAt(0) - 97;
+    const now = Date.now() / 1000; // seconds
+
+    // flight time
+    if (this.last !== null) {
+      const [lastIdx, lastTime] = this.last;
+      this.flightCount[lastIdx][idx] += 1;
+      const old = this.flight[lastIdx][idx];
+      this.flight[lastIdx][idx] += (now - lastTime - old) / this.flightCount[lastIdx][idx];
+    }
+
+    // mark key as pressed
+    this.pressed[idx] = now;
+    this.last = [idx, now];
+  }
+
+  releasing(key) {
+    if (!key.match(/[a-zA-Z]/)) return;
+    const idx = key.toLowerCase().charCodeAt(0) - 97;
+    const now = Date.now() / 1000;
+
+    if (this.pressed[idx] !== undefined) {
+      this.holdCount[idx] += 1;
+      const old = this.hold[idx];
+      this.hold[idx] += (now - this.pressed[idx] - old) / this.holdCount[idx];
+      delete this.pressed[idx];
+    }
+  }
+}
+
+const userSample = new User();
+const box = document.getElementById("box");
+
+box.addEventListener("keydown", (e) => {
+  userSample.pressing(e.key);
+});
+
+box.addEventListener("keyup", (e) => {
+  userSample.releasing(e.key);
+});
+
+// Example: log the hold and flight arrays periodically
+setInterval(() => {
+  console.clear();
+  console.log("Hold times:", userSample.hold);
+  console.log("Flight times (first row):", userSample.flight[0]);
+}, 5000);
+</script>
 
 </body>
 </html>
