@@ -2,6 +2,36 @@
 <html>
 <head>
 <title>Keyboard Recognition</title>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      display: flex;
+      justify-content: center; /* centers horizontally */
+      align-items: center;    /* centers vertically */
+      height: 100vh;          /* full viewport height */
+      background-color: #f0f2f5;
+      font-family: Arial, sans-serif;
+    }
+
+    .editable-box {
+      width: 400px;
+      height: 200px;
+      border: 2px solid #4a90e2;
+      border-radius: 10px;
+      padding: 15px;
+      background-color: #ffffff;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      outline: none;
+      font-size: 16px;
+      color: #333333;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+
+    .editable-box:focus {
+      border-color: #007bff;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+  </style>
 </head>
 
 <body>
