@@ -19,17 +19,18 @@
       margin-bottom: 20px;
     }
 
-    .editable-box {
+    textarea {
       width: 400px;
       height: 200px;
+      font-size: 16px;
+      padding: 10px;
       border: 2px solid #4a90e2;
       border-radius: 10px;
-      padding: 10px;
-      font-size: 16px;
       outline: none;
+      resize: none; /* disables manual resizing */
     }
 
-    .editable-box:focus {
+    textarea:focus {
       border-color: #007bff;
     }
   </style>
@@ -38,10 +39,7 @@
 
   <h1>Keyboard Recognition</h1>
 
-  <!-- Single editable div -->
-  <div class="editable-box" contenteditable="true">
-    Type here...
-  </div>
+  <textarea placeholder="Type here..."></textarea>
 
 </body>
 </html>
