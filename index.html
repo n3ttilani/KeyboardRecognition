@@ -7,19 +7,16 @@
     body {
       display: flex;
       flex-direction: column;
-      justify-content: center; /* vertical center */
-      align-items: center;    /* horizontal center */
+      justify-content: center; /* center vertically */
+      align-items: center;     /* center horizontally */
       height: 100vh;
-      background-color: #f0f2f5;
-      font-family: Arial, sans-serif;
       margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f0f2f5;
     }
 
     h1 {
-      text-align: center;
-      font-size: 3em;
-      font-family: Verdana, sans-serif;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
     }
 
     .editable-box {
@@ -27,49 +24,24 @@
       height: 200px;
       border: 2px solid #4a90e2;
       border-radius: 10px;
-      padding: 15px;
-      background-color: #ffffff;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      outline: none;
+      padding: 10px;
       font-size: 16px;
-      color: #333333;
-      transition: box-shadow 0.2s, border-color 0.2s;
-      margin-bottom: 20px;
+      outline: none;
     }
 
     .editable-box:focus {
       border-color: #007bff;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-    }
-
-    input, textarea {
-      width: 400px;
-      padding: 10px;
-      margin-bottom: 20px;
-      border: 2px solid #4a90e2;
-      border-radius: 8px;
-      font-size: 16px;
-      outline: none;
-      transition: box-shadow 0.2s, border-color 0.2s;
-    }
-
-    input:focus, textarea:focus {
-      border-color: #007bff;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
     }
   </style>
 </head>
-
 <body>
 
   <h1>Keyboard Recognition</h1>
 
-  <div class="editable-box" contenteditable="true" placeholder="Input field here">
-
+  <!-- Single editable div -->
+  <div class="editable-box" contenteditable="true">
+    Type here...
   </div>
-
-  <input type="text" placeholder="Input field here">
-  <textarea placeholder="Textarea here"></textarea>
 
 </body>
 </html>
