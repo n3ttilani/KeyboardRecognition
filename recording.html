@@ -2,140 +2,39 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Global Keyboard Recorder</title>
+  <title>Keyboard Rhythm Recorder</title>
   <style>
-    body { 
-      display: flex; 
-      flex-direction: column; 
-      justify-content: center; 
-      align-items: center; 
-      height: 100vh; 
-      margin: 0; 
-      font-family: 'Segoe UI', sans-serif; 
-      background-color: #1a1a1a; 
-      color: white; 
-    }
-
-    /* Common container styling */
-    #login-screen, #recording-screen { 
-      background: #2a2a2a; 
-      padding: 40px; 
-      border-radius: 16px; 
-      text-align: center; 
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 15px;
-    }
-
-    #recording-screen {
-      display: none; /* Initially hidden */
-    }
-
-    /* Login Screen Specifics */
-    #nameInput { 
-      padding: 12px; 
-      font-size: 16px; 
-      border-radius: 8px; 
-      border: none; 
-      width: 250px; 
-      background: #3d3d3d; 
-      color: white; 
-      outline: none; 
-    }
-    .start-btn { 
-      background-color: #27ae60; 
-      color: white; 
-      font-weight: bold; 
-      cursor: pointer; 
-      transition: 0.3s; 
-      padding: 12px 20px;
-      border-radius: 8px;
-      border: none;
-    }
-    .start-btn:hover { background-color: #2ecc71; transform: scale(1.05); }
-
-    /* Recording Screen Specifics */
-    .mic-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-    .mic-icon {
-      font-size: 60px; /* Adjust size as needed */
-      color: #e74c3c;
-      animation: pulse-mic 1.5s infinite;
-    }
-    @keyframes pulse-mic {
-      0% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.1); opacity: 0.8; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-
-    .status-container {
-      margin-bottom: 20px;
-    }
-    #status-text {
-      color: #aaa;
-      font-style: italic;
-    }
-    
-    .controls {
-      display: flex;
-      gap: 20px;
-      justify-content: center;
-    }
-    
-    /* Control Button Styling - Using symbols for words */
-    .control-btn {
-      font-size: 24px;
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      border: none;
-      cursor: pointer;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      transition: background 0.3s, transform 0.2s;
-    }
-    .control-btn:hover { transform: scale(1.1); }
-    
-    .stop-btn { background-color: #c0392b; color: white; } /* Square symbol for Stop */
-    .stop-btn:hover { background-color: #e74c3c; }
-    
-    .pause-btn { background-color: #f39c12; color: white; } /* Pause symbol */
-    .pause-btn:hover { background-color: #f1c40f; }
-    
-    .delete-btn { background-color: #7f8c8d; color: white; } /* X symbol for Delete */
-    .delete-btn:hover { background-color: #95a5a6; }
-
+    body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Segoe UI', sans-serif; background-color: #1a1a1a; color: white; }
+    #login-screen, #recording-screen { background: #2a2a2a; padding: 40px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; gap: 15px; width: 350px; }
+    #recording-screen { display: none; }
+    input { padding: 12px; font-size: 16px; border-radius: 8px; border: none; width: 80%; background: #3d3d3d; color: white; outline: none; }
+    .start-btn { background-color: #27ae60; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; padding: 12px 25px; border-radius: 8px; border: none; }
+    .mic-icon { font-size: 80px; color: #e74c3c; animation: pulse-mic 1.5s infinite; margin: 20px 0; }
+    @keyframes pulse-mic { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.7; } 100% { transform: scale(1); opacity: 1; } }
+    .controls { display: flex; gap: 20px; margin-top: 20px; }
+    .control-btn { font-size: 24px; width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; color: white; }
+    .stop-btn { background-color: #c0392b; }
+    .pause-btn { background-color: #f39c12; }
+    .delete-btn { background-color: #7f8c8d; }
+    #status-text { color: #aaa; font-size: 14px; min-height: 40px; }
   </style>
 </head>
 <body>
 
 <div id="login-screen">
-  <h2>Start Biometric Session</h2>
+  <h2>Start Recording</h2>
   <input id="nameInput" type="text" placeholder="Enter name..." onkeydown="if(event.key==='Enter') startRecording()">
-  <button class="start-btn" onclick="startRecording()">START RECORDING</button>
+  <button class="start-btn" onclick="startRecording()">GO</button>
 </div>
 
 <div id="recording-screen">
   <h2 id="welcome-msg"></h2>
-  
-  <div class="mic-container">
-    <div class="mic-icon">🎤</div> </div>
-
-  <div class="status-container">
-    <p id="status-text">I am now capturing your typing rhythm globally.<br>Feel free to type anywhere.</p>
-  </div>
-  
+  <div class="mic-icon">🎤</div>
+  <p id="status-text">Recording your typing rhythm...<br>You can type anywhere on your computer.</p>
   <div class="controls">
-    <button class="control-btn delete-btn" onclick="deleteRecording()" title="Delete Recording">✕</button>
-    <button class="control-btn pause-btn" onclick="togglePause()" id="pauseBtn" title="Pause/Resume Recording">Ⅱ</button>
-    <button class="control-btn stop-btn" onclick="stopAndSave()" title="Stop & Save Recording">■</button>
+    <button class="control-btn delete-btn" onclick="deleteRecording()" title="Delete">✕</button>
+    <button class="control-btn pause-btn" onclick="togglePause()" id="pauseBtn" title="Pause">Ⅱ</button>
+    <button class="control-btn stop-btn" onclick="stopAndSave()" title="Save">■</button>
   </div>
 </div>
 
@@ -143,161 +42,91 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
   import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
-  const firebaseConfig = { /* Paste your Config Here */ };
+  const firebaseConfig = {
+    apiKey: "AIzaSyDp-K4PE_GhabxuoZN052PghmVkbz8tT_Q",
+    authDomain: "keyboard-recognition.firebaseapp.com",
+    projectId: "keyboard-recognition",
+    storageBucket: "keyboard-recognition.firebasestorage.app",
+    messagingSenderId: "34676587550",
+    appId: "1:34676587550:web:162c8e02d08393188cc20f"
+  };
+
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  class GlobalUserStats {
-    constructor() {
-      this.reset();
-    }
-    
+  class Stats {
+    constructor() { this.reset(); }
     reset() {
-      this.hold = new Array(26).fill(0);
-      this.holdCount = new Array(26).fill(0);
+      this.hold = new Array(26).fill(0); this.holdCount = new Array(26).fill(0);
       this.flight = Array.from({length:26}, () => new Array(26).fill(0));
       this.flightCount = Array.from({length:26}, () => new Array(26).fill(0));
-      this.last = null;
-      this.pressed = {};
-      this.isRecording = false;
-      this.isPaused = false;
+      this.last = null; this.pressed = {}; this.active = false; this.paused = false;
     }
-
-    load(data) {
-      if (data.hold) this.hold = data.hold;
-      if (data.holdCount) this.holdCount = data.holdCount;
-      this.flight = data.flight ? JSON.parse(data.flight) : this.flight;
-      this.flightCount = data.flightCount ? JSON.parse(data.flightCount) : this.flightCount;
+    load(d) {
+      if(d.hold) this.hold = d.hold; if(d.holdCount) this.holdCount = d.holdCount;
+      if(d.flight) this.flight = JSON.parse(d.flight); if(d.flightCount) this.flightCount = JSON.parse(d.flightCount);
     }
   }
 
-  const stats = new GlobalUserStats();
-  let currentUserName = "";
+  const s = new Stats();
+  let user = "";
 
-  window.startRecording = async function() {
-    const name = document.getElementById("nameInput").value.trim();
-    if (!name) return;
-    currentUserName = name;
-    
-    // Clear any previous data
-    stats.reset();
-
-    const userDoc = doc(db, "users", currentUserName);
-    const docSnap = await getDoc(userDoc);
-    if (docSnap.exists()) stats.load(docSnap.data());
-
-    // Switch screens
+  window.startRecording = async () => {
+    user = document.getElementById("nameInput").value.trim();
+    if (!user) return;
+    s.reset();
+    const snap = await getDoc(doc(db, "users", user));
+    if (snap.exists()) s.load(snap.data());
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("recording-screen").style.display = "flex";
-    
-    document.getElementById("welcome-msg").textContent = `Listening to ${name}`;
-    updateStatusText("RECORDING...");
-    stats.isRecording = true;
+    document.getElementById("welcome-msg").textContent = user;
+    s.active = true;
   };
 
-  function updateStatusText(text) {
-    document.getElementById("status-text").innerHTML = `I am now capturing your typing rhythm globally.<br>Feel free to type anywhere.<br><b>Status: ${text}</b>`;
-  }
-
-  // GLOBAL LISTENERS
   window.addEventListener("keydown", (e) => {
-    if (!stats.isRecording || stats.isPaused || !e.key.match(/^[a-zA-Z]$/)) return;
-    const idx = e.key.toLowerCase().charCodeAt(0) - 97;
+    if (!s.active || s.paused || !e.key.match(/^[a-zA-Z]$/)) return;
+    const i = e.key.toLowerCase().charCodeAt(0) - 97;
     const now = Date.now() / 1000;
-
-    if (stats.last !== null) {
-      const [lastIdx, lastTime] = stats.last;
-      stats.flightCount[lastIdx][idx]++;
-      const old = stats.flight[lastIdx][idx];
-      stats.flight[lastIdx][idx] += (now - lastTime - old) / stats.flightCount[lastIdx][idx];
+    if (s.last) {
+      const [li, lt] = s.last; s.flightCount[li][i]++;
+      s.flight[li][i] += (now - lt - s.flight[li][i]) / s.flightCount[li][i];
     }
-    stats.pressed[idx] = now;
-    stats.last = [idx, now];
+    s.pressed[i] = now; s.last = [i, now];
   });
 
   window.addEventListener("keyup", (e) => {
-    if (!stats.isRecording || stats.isPaused || !e.key.match(/^[a-zA-Z]$/)) return;
-    const idx = e.key.toLowerCase().charCodeAt(0) - 97;
-    const now = Date.now() / 1000;
-
-    if (stats.pressed[idx] !== undefined) {
-      stats.holdCount[idx]++;
-      const old = stats.hold[idx];
-      stats.hold[idx] += (now - stats.pressed[idx] - old) / stats.holdCount[idx];
-      delete stats.pressed[idx];
+    if (!s.active || s.paused || !e.key.match(/^[a-zA-Z]$/)) return;
+    const i = e.key.toLowerCase().charCodeAt(0) - 97;
+    if (s.pressed[i]) {
+      s.holdCount[i]++;
+      s.hold[i] += (Date.now()/1000 - s.pressed[i] - s.hold[i]) / s.holdCount[i];
+      delete s.pressed[i];
     }
   });
 
-  // Control Functions
-  window.togglePause = function() {
-    stats.isPaused = !stats.isPaused;
-    const pauseBtn = document.getElementById("pauseBtn");
-    const micIcon = document.querySelector(".mic-icon");
-    
-    if (stats.isPaused) {
-      pauseBtn.textContent = "▶"; // Play symbol for Resume
-      pauseBtn.title = "Resume Recording";
-      updateStatusText("PAUSED");
-      micIcon.style.animationPlayState = 'paused'; // Stop mic pulse
-    } else {
-      pauseBtn.textContent = "Ⅱ"; // Pause symbol
-      pauseBtn.title = "Pause Recording";
-      updateStatusText("RECORDING...");
-      micIcon.style.animationPlayState = 'running'; // Resume mic pulse
-    }
+  window.togglePause = () => {
+    s.paused = !s.paused;
+    document.getElementById("pauseBtn").textContent = s.paused ? "▶" : "Ⅱ";
+    document.querySelector(".mic-icon").style.animationPlayState = s.paused ? 'paused' : 'running';
+    document.getElementById("status-text").innerHTML = s.paused ? "Recording Paused" : "Recording your typing rhythm...";
   };
 
-  window.deleteRecording = async function() {
-    if(!confirm("Are you sure you want to delete this user's entire recording data from the database? This cannot be undone.")) return;
-    
-    // Stop recording internally first
-    stats.isRecording = false;
-    
-    updateStatusText("Deleting data...");
-    
-    try {
-      await deleteDoc(doc(db, "users", currentUserName));
-      alert("Recording data deleted.");
-    } catch (error) {
-      console.error("Error deleting document: ", error);
-      alert("Error deleting data. Check console.");
-    }
-    
-    // Reset and return to login screen
-    stats.reset();
-    returnToLogin();
+  window.deleteRecording = async () => {
+    if(!confirm("Delete all data for this user?")) return;
+    await deleteDoc(doc(db, "users", user));
+    location.reload();
   };
 
-  window.stopAndSave = async function() {
-    stats.isRecording = false;
-    updateStatusText("Saving biometric data...");
-    
-    try {
-      await setDoc(doc(db, "users", currentUserName), {
-        hold: stats.hold,
-        holdCount: stats.holdCount,
-        flight: JSON.stringify(stats.flight),
-        flightCount: JSON.stringify(stats.flightCount),
-        lastUpdated: Date.now()
-      }, { merge: true });
-      alert("Biometric sync complete.");
-    } catch (error) {
-      console.error("Error saving document: ", error);
-      alert("Error saving data. Check console.");
-    }
-
-    // Reset and return to login screen
-    stats.reset();
-    returnToLogin();
+  window.stopAndSave = async () => {
+    s.active = false;
+    document.getElementById("status-text").textContent = "Saving...";
+    await setDoc(doc(db, "users", user), {
+      hold: s.hold, holdCount: s.holdCount,
+      flight: JSON.stringify(s.flight), flightCount: JSON.stringify(s.flightCount),
+      lastUpdated: Date.now()
+    }, { merge: true });
+    location.reload();
   };
-
-  function returnToLogin() {
-    document.getElementById("recording-screen").style.display = "none";
-    document.getElementById("login-screen").style.display = "flex";
-    document.getElementById("nameInput").value = "";
-    document.querySelector(".mic-icon").style.animationPlayState = 'running'; // Reset animation state
-  }
-
 </script>
 </body>
 </html>
