@@ -63,10 +63,8 @@
       this.holdCount = new Array(26).fill(0);
       this.flight = Array.from({length:26}, () => new Array(26).fill(0));
       this.flightCount = Array.from({length:26}, () => new Array(26).fill(0));
-      
       this.released = { key: null, time: null };
-      this.pressed = {}; // Currently active keys: { index: pressTime }
-      
+      this.pressed = {}; 
       this.active = false; 
       this.paused = false;
     }
@@ -80,6 +78,35 @@
 
   const s = new Stats();
   let user = "";
+
+  const handlePress = (i, now) => {
+    if (s.released.key !== null && s.released.time !== null) {
+      const li = s.released.key;
+      const flightVal = now - s.released.time;
+      s.flightCount[li][i]++;
+      s.flight[li][i] += (flightVal - s.flight[li][i]) / s.flightCount[li][i];
+    }
+    s.pressed[i] = now;
+  };
+
+  const handleRelease = (i, now) => {
+    if (!s.pressed[i]) return;
+    
+    // Calculate Rollovers (Negative Flight)
+    Object.keys(s.pressed).forEach(pKeyStr => {
+      const pKey = parseInt(pKeyStr);
+      if (pKey !== i) {
+        const flightVal = s.pressed[pKey] - now;
+        s.flightCount[pKey][i]++;
+        s.flight[pKey][i] += (flightVal - s.flight[pKey][i]) / s.flightCount[pKey][i];
+      }
+    });
+
+    s.holdCount[i]++;
+    s.hold[i] += (now - s.pressed[i] - s.hold[i]) / s.holdCount[i];
+    s.released = { key: i, time: now };
+    delete s.pressed[i];
+  };
 
   window.startRecording = async () => {
     user = document.getElementById("nameInput").value.trim();
@@ -98,45 +125,14 @@
     const i = e.key.toLowerCase().charCodeAt(0) - 97;
     const now = Date.now() / 1000;
 
-    // Logic 1: Positive Flight (Standard)
-    // Add current press - last released time
-    if (s.released.key !== null && s.released.time !== null) {
-      const li = s.released.key;
-      const flightVal = now - s.released.time;
-      s.flightCount[li][i]++;
-      s.flight[li][i] += (flightVal - s.flight[li][i]) / s.flightCount[li][i];
-    }
-
-    s.pressed[i] = now;
+    if (e.repeat) handleRelease(i, now); // Force end the previous pulse
+    handlePress(i, now);
   });
 
   window.addEventListener("keyup", (e) => {
     if (!s.active || s.paused || !e.key.match(/^[a-zA-Z]$/)) return;
     const i = e.key.toLowerCase().charCodeAt(0) - 97;
-    const now = Date.now() / 1000;
-
-    if (s.pressed[i]) {
-      // Logic 2: Negative Flight (Rollover)
-      // For every other key currently being pressed, record the negative interval
-      Object.keys(s.pressed).forEach(pKeyStr => {
-        const pKey = parseInt(pKeyStr);
-        if (pKey !== i) {
-          // If current release 'i' happened after pKey was pressed, it's a rollover
-          const flightVal = s.pressed[pKey] - now; // This will be negative
-          s.flightCount[pKey][i]++;
-          s.flight[pKey][i] += (flightVal - s.flight[pKey][i]) / s.flightCount[pKey][i];
-        }
-      });
-
-      // Update Hold Time
-      s.holdCount[i]++;
-      s.hold[i] += (now - s.pressed[i] - s.hold[i]) / s.holdCount[i];
-
-      // Update Released state
-      s.released.key = i;
-      s.released.time = now;
-      delete s.pressed[i];
-    }
+    handleRelease(i, Date.now() / 1000);
   });
 
   window.togglePause = () => {
@@ -146,9 +142,8 @@
   };
 
   window.deleteRecording = () => {
-    if(!confirm("Discard only the data from this session?")) return;
-    s.reset();
-    location.reload();
+    if(!confirm("Discard only current session?")) return;
+    s.reset(); location.reload();
   };
 
   window.stopAndSave = async () => {
