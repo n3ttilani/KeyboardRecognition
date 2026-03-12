@@ -4,44 +4,144 @@
   <meta charset="UTF-8">
   <title>Global Keyboard Recorder</title>
   <style>
-    body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Segoe UI', sans-serif; background-color: #1a1a1a; color: white; }
-    #login, #recorder { background: #2a2a2a; padding: 40px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    input, button { padding: 12px; font-size: 16px; border-radius: 8px; border: none; margin: 10px; }
-    input { width: 250px; background: #3d3d3d; color: white; outline: none; }
-    button { background-color: #e74c3c; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
-    button:hover { background-color: #c0392b; transform: scale(1.05); }
+    body { 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: center; 
+      align-items: center; 
+      height: 100vh; 
+      margin: 0; 
+      font-family: 'Segoe UI', sans-serif; 
+      background-color: #1a1a1a; 
+      color: white; 
+    }
+
+    /* Common container styling */
+    #login-screen, #recording-screen { 
+      background: #2a2a2a; 
+      padding: 40px; 
+      border-radius: 16px; 
+      text-align: center; 
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+
+    #recording-screen {
+      display: none; /* Initially hidden */
+    }
+
+    /* Login Screen Specifics */
+    #nameInput { 
+      padding: 12px; 
+      font-size: 16px; 
+      border-radius: 8px; 
+      border: none; 
+      width: 250px; 
+      background: #3d3d3d; 
+      color: white; 
+      outline: none; 
+    }
+    .start-btn { 
+      background-color: #27ae60; 
+      color: white; 
+      font-weight: bold; 
+      cursor: pointer; 
+      transition: 0.3s; 
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: none;
+    }
+    .start-btn:hover { background-color: #2ecc71; transform: scale(1.05); }
+
+    /* Recording Screen Specifics */
+    .mic-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .mic-icon {
+      font-size: 60px; /* Adjust size as needed */
+      color: #e74c3c;
+      animation: pulse-mic 1.5s infinite;
+    }
+    @keyframes pulse-mic {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .status-container {
+      margin-bottom: 20px;
+    }
+    #status-text {
+      color: #aaa;
+      font-style: italic;
+    }
     
-    /* Recording Animation */
-    .recording-container { display: flex; align-items: center; justify-content: center; margin-top: 20px; visibility: hidden; }
-    .dot { height: 15px; width: 15px; background-color: #ff0000; border-radius: 50%; display: inline-block; margin-right: 10px; animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); } }
-    .rec-text { font-weight: bold; color: #ff0000; letter-spacing: 1px; }
-    #instructions { color: #aaa; margin-top: 20px; font-style: italic; }
+    .controls {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+    
+    /* Control Button Styling - Using symbols for words */
+    .control-btn {
+      font-size: 24px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background 0.3s, transform 0.2s;
+    }
+    .control-btn:hover { transform: scale(1.1); }
+    
+    .stop-btn { background-color: #c0392b; color: white; } /* Square symbol for Stop */
+    .stop-btn:hover { background-color: #e74c3c; }
+    
+    .pause-btn { background-color: #f39c12; color: white; } /* Pause symbol */
+    .pause-btn:hover { background-color: #f1c40f; }
+    
+    .delete-btn { background-color: #7f8c8d; color: white; } /* X symbol for Delete */
+    .delete-btn:hover { background-color: #95a5a6; }
+
   </style>
 </head>
 <body>
 
-<div id="login">
-  <h2>Start Session</h2>
-  <input id="nameInput" type="text" placeholder="Enter name to begin..." onkeydown="if(event.key==='Enter') startRecording()">
-  <br>
-  <button onclick="startRecording()">START RECORDING</button>
+<div id="login-screen">
+  <h2>Start Biometric Session</h2>
+  <input id="nameInput" type="text" placeholder="Enter name..." onkeydown="if(event.key==='Enter') startRecording()">
+  <button class="start-btn" onclick="startRecording()">START RECORDING</button>
 </div>
 
-<div id="recorder" style="display:none;">
-  <h2 id="welcome"></h2>
-  <div id="recIndicator" class="recording-container">
-    <span class="dot"></span>
-    <span class="rec-text">LIVE RECORDING</span>
+<div id="recording-screen">
+  <h2 id="welcome-msg"></h2>
+  
+  <div class="mic-container">
+    <div class="mic-icon">🎤</div> </div>
+
+  <div class="status-container">
+    <p id="status-text">I am now capturing your typing rhythm globally.<br>Feel free to type anywhere.</p>
   </div>
-  <p id="instructions">I am now capturing your typing rhythm globally.<br>Feel free to type anywhere or just browse.</p>
-  <button style="background-color: #4a90e2;" onclick="stopAndSave()">STOP & SAVE</button>
-  <p id="status"></p>
+  
+  <div class="controls">
+    <button class="control-btn delete-btn" onclick="deleteRecording()" title="Delete Recording">✕</button>
+    <button class="control-btn pause-btn" onclick="togglePause()" id="pauseBtn" title="Pause/Resume Recording">Ⅱ</button>
+    <button class="control-btn stop-btn" onclick="stopAndSave()" title="Stop & Save Recording">■</button>
+  </div>
 </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
   const firebaseConfig = { /* Paste your Config Here */ };
   const app = initializeApp(firebaseConfig);
@@ -49,6 +149,10 @@
 
   class GlobalUserStats {
     constructor() {
+      this.reset();
+    }
+    
+    reset() {
       this.hold = new Array(26).fill(0);
       this.holdCount = new Array(26).fill(0);
       this.flight = Array.from({length:26}, () => new Array(26).fill(0));
@@ -56,6 +160,7 @@
       this.last = null;
       this.pressed = {};
       this.isRecording = false;
+      this.isPaused = false;
     }
 
     load(data) {
@@ -73,21 +178,30 @@
     const name = document.getElementById("nameInput").value.trim();
     if (!name) return;
     currentUserName = name;
+    
+    // Clear any previous data
+    stats.reset();
 
     const userDoc = doc(db, "users", currentUserName);
     const docSnap = await getDoc(userDoc);
     if (docSnap.exists()) stats.load(docSnap.data());
 
-    document.getElementById("login").style.display = "none";
-    document.getElementById("recorder").style.display = "block";
-    document.getElementById("recIndicator").style.visibility = "visible";
-    document.getElementById("welcome").textContent = `Listening to ${name}...`;
+    // Switch screens
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("recording-screen").style.display = "flex";
+    
+    document.getElementById("welcome-msg").textContent = `Listening to ${name}`;
+    updateStatusText("RECORDING...");
     stats.isRecording = true;
   };
 
+  function updateStatusText(text) {
+    document.getElementById("status-text").innerHTML = `I am now capturing your typing rhythm globally.<br>Feel free to type anywhere.<br><b>Status: ${text}</b>`;
+  }
+
   // GLOBAL LISTENERS
   window.addEventListener("keydown", (e) => {
-    if (!stats.isRecording || !e.key.match(/^[a-zA-Z]$/)) return;
+    if (!stats.isRecording || stats.isPaused || !e.key.match(/^[a-zA-Z]$/)) return;
     const idx = e.key.toLowerCase().charCodeAt(0) - 97;
     const now = Date.now() / 1000;
 
@@ -102,7 +216,7 @@
   });
 
   window.addEventListener("keyup", (e) => {
-    if (!stats.isRecording || !e.key.match(/^[a-zA-Z]$/)) return;
+    if (!stats.isRecording || stats.isPaused || !e.key.match(/^[a-zA-Z]$/)) return;
     const idx = e.key.toLowerCase().charCodeAt(0) - 97;
     const now = Date.now() / 1000;
 
@@ -114,22 +228,76 @@
     }
   });
 
+  // Control Functions
+  window.togglePause = function() {
+    stats.isPaused = !stats.isPaused;
+    const pauseBtn = document.getElementById("pauseBtn");
+    const micIcon = document.querySelector(".mic-icon");
+    
+    if (stats.isPaused) {
+      pauseBtn.textContent = "▶"; // Play symbol for Resume
+      pauseBtn.title = "Resume Recording";
+      updateStatusText("PAUSED");
+      micIcon.style.animationPlayState = 'paused'; // Stop mic pulse
+    } else {
+      pauseBtn.textContent = "Ⅱ"; // Pause symbol
+      pauseBtn.title = "Pause Recording";
+      updateStatusText("RECORDING...");
+      micIcon.style.animationPlayState = 'running'; // Resume mic pulse
+    }
+  };
+
+  window.deleteRecording = async function() {
+    if(!confirm("Are you sure you want to delete this user's entire recording data from the database? This cannot be undone.")) return;
+    
+    // Stop recording internally first
+    stats.isRecording = false;
+    
+    updateStatusText("Deleting data...");
+    
+    try {
+      await deleteDoc(doc(db, "users", currentUserName));
+      alert("Recording data deleted.");
+    } catch (error) {
+      console.error("Error deleting document: ", error);
+      alert("Error deleting data. Check console.");
+    }
+    
+    // Reset and return to login screen
+    stats.reset();
+    returnToLogin();
+  };
+
   window.stopAndSave = async function() {
     stats.isRecording = false;
-    document.getElementById("recIndicator").style.visibility = "hidden";
-    const status = document.getElementById("status");
-    status.textContent = "Saving biometric data...";
+    updateStatusText("Saving biometric data...");
     
-    await setDoc(doc(db, "users", currentUserName), {
-      hold: stats.hold,
-      holdCount: stats.holdCount,
-      flight: JSON.stringify(stats.flight),
-      flightCount: JSON.stringify(stats.flightCount),
-      lastUpdated: Date.now()
-    }, { merge: true });
+    try {
+      await setDoc(doc(db, "users", currentUserName), {
+        hold: stats.hold,
+        holdCount: stats.holdCount,
+        flight: JSON.stringify(stats.flight),
+        flightCount: JSON.stringify(stats.flightCount),
+        lastUpdated: Date.now()
+      }, { merge: true });
+      alert("Biometric sync complete.");
+    } catch (error) {
+      console.error("Error saving document: ", error);
+      alert("Error saving data. Check console.");
+    }
 
-    status.textContent = "Sync Complete. You can close this tab.";
+    // Reset and return to login screen
+    stats.reset();
+    returnToLogin();
   };
+
+  function returnToLogin() {
+    document.getElementById("recording-screen").style.display = "none";
+    document.getElementById("login-screen").style.display = "flex";
+    document.getElementById("nameInput").value = "";
+    document.querySelector(".mic-icon").style.animationPlayState = 'running'; // Reset animation state
+  }
+
 </script>
 </body>
 </html>
