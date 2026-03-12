@@ -1,15 +1,135 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>About</title>
+  <meta charset="UTF-8">
+  <title>Global Keyboard Recorder</title>
+  <style>
+    body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Segoe UI', sans-serif; background-color: #1a1a1a; color: white; }
+    #login, #recorder { background: #2a2a2a; padding: 40px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    input, button { padding: 12px; font-size: 16px; border-radius: 8px; border: none; margin: 10px; }
+    input { width: 250px; background: #3d3d3d; color: white; outline: none; }
+    button { background-color: #e74c3c; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
+    button:hover { background-color: #c0392b; transform: scale(1.05); }
+    
+    /* Recording Animation */
+    .recording-container { display: flex; align-items: center; justify-content: center; margin-top: 20px; visibility: hidden; }
+    .dot { height: 15px; width: 15px; background-color: #ff0000; border-radius: 50%; display: inline-block; margin-right: 10px; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); } }
+    .rec-text { font-weight: bold; color: #ff0000; letter-spacing: 1px; }
+    #instructions { color: #aaa; margin-top: 20px; font-style: italic; }
+  </style>
 </head>
-
 <body>
 
-<h1>About this project</h1>
-<p>This page explains the keyboard recognition project.</p>
+<div id="login">
+  <h2>Start Session</h2>
+  <input id="nameInput" type="text" placeholder="Enter name to begin..." onkeydown="if(event.key==='Enter') startRecording()">
+  <br>
+  <button onclick="startRecording()">START RECORDING</button>
+</div>
 
-<a href="index.html">Back to home</a>
+<div id="recorder" style="display:none;">
+  <h2 id="welcome"></h2>
+  <div id="recIndicator" class="recording-container">
+    <span class="dot"></span>
+    <span class="rec-text">LIVE RECORDING</span>
+  </div>
+  <p id="instructions">I am now capturing your typing rhythm globally.<br>Feel free to type anywhere or just browse.</p>
+  <button style="background-color: #4a90e2;" onclick="stopAndSave()">STOP & SAVE</button>
+  <p id="status"></p>
+</div>
 
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+  const firebaseConfig = { /* Paste your Config Here */ };
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  class GlobalUserStats {
+    constructor() {
+      this.hold = new Array(26).fill(0);
+      this.holdCount = new Array(26).fill(0);
+      this.flight = Array.from({length:26}, () => new Array(26).fill(0));
+      this.flightCount = Array.from({length:26}, () => new Array(26).fill(0));
+      this.last = null;
+      this.pressed = {};
+      this.isRecording = false;
+    }
+
+    load(data) {
+      if (data.hold) this.hold = data.hold;
+      if (data.holdCount) this.holdCount = data.holdCount;
+      this.flight = data.flight ? JSON.parse(data.flight) : this.flight;
+      this.flightCount = data.flightCount ? JSON.parse(data.flightCount) : this.flightCount;
+    }
+  }
+
+  const stats = new GlobalUserStats();
+  let currentUserName = "";
+
+  window.startRecording = async function() {
+    const name = document.getElementById("nameInput").value.trim();
+    if (!name) return;
+    currentUserName = name;
+
+    const userDoc = doc(db, "users", currentUserName);
+    const docSnap = await getDoc(userDoc);
+    if (docSnap.exists()) stats.load(docSnap.data());
+
+    document.getElementById("login").style.display = "none";
+    document.getElementById("recorder").style.display = "block";
+    document.getElementById("recIndicator").style.visibility = "visible";
+    document.getElementById("welcome").textContent = `Listening to ${name}...`;
+    stats.isRecording = true;
+  };
+
+  // GLOBAL LISTENERS
+  window.addEventListener("keydown", (e) => {
+    if (!stats.isRecording || !e.key.match(/^[a-zA-Z]$/)) return;
+    const idx = e.key.toLowerCase().charCodeAt(0) - 97;
+    const now = Date.now() / 1000;
+
+    if (stats.last !== null) {
+      const [lastIdx, lastTime] = stats.last;
+      stats.flightCount[lastIdx][idx]++;
+      const old = stats.flight[lastIdx][idx];
+      stats.flight[lastIdx][idx] += (now - lastTime - old) / stats.flightCount[lastIdx][idx];
+    }
+    stats.pressed[idx] = now;
+    stats.last = [idx, now];
+  });
+
+  window.addEventListener("keyup", (e) => {
+    if (!stats.isRecording || !e.key.match(/^[a-zA-Z]$/)) return;
+    const idx = e.key.toLowerCase().charCodeAt(0) - 97;
+    const now = Date.now() / 1000;
+
+    if (stats.pressed[idx] !== undefined) {
+      stats.holdCount[idx]++;
+      const old = stats.hold[idx];
+      stats.hold[idx] += (now - stats.pressed[idx] - old) / stats.holdCount[idx];
+      delete stats.pressed[idx];
+    }
+  });
+
+  window.stopAndSave = async function() {
+    stats.isRecording = false;
+    document.getElementById("recIndicator").style.visibility = "hidden";
+    const status = document.getElementById("status");
+    status.textContent = "Saving biometric data...";
+    
+    await setDoc(doc(db, "users", currentUserName), {
+      hold: stats.hold,
+      holdCount: stats.holdCount,
+      flight: JSON.stringify(stats.flight),
+      flightCount: JSON.stringify(stats.flightCount),
+      lastUpdated: Date.now()
+    }, { merge: true });
+
+    status.textContent = "Sync Complete. You can close this tab.";
+  };
+</script>
 </body>
 </html>
