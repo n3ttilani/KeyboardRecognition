@@ -26,23 +26,23 @@
 <div id="login-screen">
   <h2>Start Recording</h2>
   <input id="nameInput" type="text" placeholder="Enter name..." onkeydown="if(event.key==='Enter') startRecording()">
-  <button class="start-btn" onclick="startRecording()" title="Start"><i class="fas fa-microphone"></i></button>
+  <button class="start-btn" onclick="startRecording()" title="Start"><i class="fas fa-play"></i></button>
 </div>
 
 <div id="recording-screen">
   <h2 id="welcome-msg"></h2>
-  <div class="mic-icon"><i class="fas fa-microphone"></i></div>
+  <div class="mic-icon"><i class="fas fa-keyboard"></i></div>
   <p id="status-text">Recording your typing rhythm...<br>You can type anywhere on your computer.</p>
   <div class="controls">
-    <button class="control-btn delete-btn" onclick="deleteRecording()" title="Delete"><i class="fas fa-trash-can"></i></button>
+    <button class="control-btn delete-btn" onclick="deleteRecording()" title="Discard Session"><i class="fas fa-trash-can"></i></button>
     <button class="control-btn pause-btn" onclick="togglePause()" id="pauseBtn" title="Pause"><i class="fas fa-pause" id="pauseIcon"></i></button>
-    <button class="control-btn stop-btn" onclick="stopAndSave()" title="Save"><i class="fas fa-stop"></i></button>
+    <button class="control-btn stop-btn" onclick="stopAndSave()" title="Save & Exit"><i class="fas fa-stop"></i></button>
   </div>
 </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDp-K4PE_GhabxuoZN052PghmVkbz8tT_Q",
@@ -63,9 +63,10 @@
       this.holdCount = new Array(26).fill(0);
       this.flight = Array.from({length:26}, () => new Array(26).fill(0));
       this.flightCount = Array.from({length:26}, () => new Array(26).fill(0));
-      this.pressed = {}; 
-      this.lastReleasedIndex = null;
-      this.lastReleaseTime = null;
+      
+      this.released = { key: null, time: null };
+      this.pressed = {}; // Currently active keys: { index: pressTime }
+      
       this.active = false; 
       this.paused = false;
     }
@@ -97,14 +98,15 @@
     const i = e.key.toLowerCase().charCodeAt(0) - 97;
     const now = Date.now() / 1000;
 
-    // Flight Time with Rollover Support: Current Press - Last Release
-    if (s.lastReleaseTime !== null && s.lastReleasedIndex !== null) {
-      const li = s.lastReleasedIndex;
-      const currentFlight = now - s.lastReleaseTime;
+    // Logic 1: Positive Flight (Standard)
+    // Add current press - last released time
+    if (s.released.key !== null && s.released.time !== null) {
+      const li = s.released.key;
+      const flightVal = now - s.released.time;
       s.flightCount[li][i]++;
-      s.flight[li][i] += (currentFlight - s.flight[li][i]) / s.flightCount[li][i];
+      s.flight[li][i] += (flightVal - s.flight[li][i]) / s.flightCount[li][i];
     }
-    
+
     s.pressed[i] = now;
   });
 
@@ -114,27 +116,38 @@
     const now = Date.now() / 1000;
 
     if (s.pressed[i]) {
+      // Logic 2: Negative Flight (Rollover)
+      // For every other key currently being pressed, record the negative interval
+      Object.keys(s.pressed).forEach(pKeyStr => {
+        const pKey = parseInt(pKeyStr);
+        if (pKey !== i) {
+          // If current release 'i' happened after pKey was pressed, it's a rollover
+          const flightVal = s.pressed[pKey] - now; // This will be negative
+          s.flightCount[pKey][i]++;
+          s.flight[pKey][i] += (flightVal - s.flight[pKey][i]) / s.flightCount[pKey][i];
+        }
+      });
+
+      // Update Hold Time
       s.holdCount[i]++;
       s.hold[i] += (now - s.pressed[i] - s.hold[i]) / s.holdCount[i];
-      
-      // Mark this key as the "Previous Release" for the next key pressed
-      s.lastReleasedIndex = i;
-      s.lastReleaseTime = now;
+
+      // Update Released state
+      s.released.key = i;
+      s.released.time = now;
       delete s.pressed[i];
     }
   });
 
   window.togglePause = () => {
     s.paused = !s.paused;
-    const icon = document.getElementById("pauseIcon");
-    icon.className = s.paused ? "fas fa-play" : "fas fa-pause";
-    document.querySelector(".mic-icon").style.animationPlayState = s.paused ? 'paused' : 'running';
+    document.getElementById("pauseIcon").className = s.paused ? "fas fa-play" : "fas fa-pause";
     document.getElementById("status-text").innerHTML = s.paused ? "Recording Paused" : "Recording your typing rhythm...";
   };
 
-  window.deleteRecording = async () => {
-    if(!confirm("Delete all data for this user?")) return;
-    await deleteDoc(doc(db, "users", user));
+  window.deleteRecording = () => {
+    if(!confirm("Discard only the data from this session?")) return;
+    s.reset();
     location.reload();
   };
 
