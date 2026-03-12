@@ -5,27 +5,30 @@
   <title>Keyboard Recognition</title>
   <style>
     body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: Arial, sans-serif; background-color: #f0f2f5; }
-    #login { background: #fff; padding: 30px; font-size: 20px; border-radius: 12px; text-align: center; }
-    input, button { padding: 10px; font-size: 16px; border-radius: 8px; outline: none; }
-    input { width: 220px; border: 2px solid #4a90e2; margin-right: 10px; }
-    button { border: none; background-color: #4a90e2; color: white; cursor: pointer; }
+    #login, #typing { background: #fff; padding: 30px; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    input, button, textarea { padding: 10px; font-size: 16px; border-radius: 8px; outline: none; margin: 10px 0; }
+    input { width: 220px; border: 2px solid #4a90e2; }
+    button { border: none; background-color: #4a90e2; color: white; cursor: pointer; padding: 10px 20px; transition: background 0.3s; }
     button:hover { background-color: #007bff; }
-    textarea { width: 400px; height: 200px; font-size: 16px; padding: 10px; border: 2px solid #4a90e2; border-radius: 10px; outline: none; resize: none; }
-    #typing { text-align: center; }
+    textarea { width: 400px; height: 200px; border: 2px solid #4a90e2; resize: none; }
+    textarea:focus { border-color: #007bff; }
+    #status { font-size: 14px; margin-top: 10px; }
   </style>
 </head>
 <body>
 
 <div id="login">
   <p>Enter your name:</p>
-  <input id="nameInput" type="text" onkeydown="if(event.key==='Enter') start()">
+  <input id="nameInput" type="text" placeholder="Your name..." onkeydown="if(event.key==='Enter') start()">
   <button onclick="start()">Go</button>
 </div>
 
 <div id="typing" style="display:none;">
   <p id="welcome"></p>
-  <textarea id="box" placeholder="Type here..."></textarea>
-  <p><small>Data syncs to Firebase automatically as you type.</small></p>
+  <textarea id="box" placeholder="Start typing here..."></textarea>
+  <br>
+  <button id="submitBtn" onclick="finishSession()">Submit Data</button>
+  <p id="status"></p>
 </div>
 
 <script type="module">
@@ -54,11 +57,10 @@
       this.pressed = {};
     }
 
-    // Load existing data from Firebase into this instance
     load(data) {
       if (data.hold) this.hold = data.hold;
       if (data.holdCount) this.holdCount = data.holdCount;
-      if (data.flight) this.flight = JSON.parse(data.flight); // Flight is stored as stringified JSON
+      if (data.flight) this.flight = JSON.parse(data.flight);
       if (data.flightCount) this.flightCount = JSON.parse(data.flightCount);
     }
 
@@ -73,6 +75,7 @@
         this.flight[lastIdx][idx] += (now - lastTime - old) / this.flightCount[lastIdx][idx];
       }
       this.pressed[idx] = now;
+      this.last = [idx, now];
     }
 
     releasing(key) {
@@ -85,7 +88,6 @@
         this.hold[idx] += (now - this.pressed[idx] - old) / this.holdCount[idx];
         delete this.pressed[idx];
       }
-      this.last = [idx, now];
     }
   }
 
@@ -97,15 +99,12 @@
     if (!name) return;
     currentUserName = name;
 
-    // Check if user exists
     const userDoc = doc(db, "users", currentUserName);
     const docSnap = await getDoc(userDoc);
 
     if (docSnap.exists()) {
       userSample.load(docSnap.data());
-      console.log("Welcome back! Existing data loaded.");
-    } else {
-      console.log("New user created.");
+      console.log("Existing user loaded.");
     }
 
     document.getElementById("login").style.display = "none";
@@ -115,22 +114,32 @@
 
   const box = document.getElementById("box");
   box.addEventListener("keydown", (e) => userSample.pressing(e.key));
-  box.addEventListener("keyup", (e) => {
-    userSample.releasing(e.key);
-    saveToFirebase(); // Auto-save on every release
-  });
+  box.addEventListener("keyup", (e) => userSample.releasing(e.key));
 
-  async function saveToFirebase() {
-    if (!currentUserName) return;
-    const userDoc = doc(db, "users", currentUserName);
-    await setDoc(userDoc, {
-      hold: userSample.hold,
-      holdCount: userSample.holdCount,
-      flight: JSON.stringify(userSample.flight),
-      flightCount: JSON.stringify(userSample.flightCount),
-      lastUpdated: Date.now()
-    }, { merge: true });
-  }
+  window.finishSession = async function() {
+    const status = document.getElementById("status");
+    status.style.color = "black";
+    status.textContent = "Syncing with database...";
+    
+    try {
+      const userDoc = doc(db, "users", currentUserName);
+      await setDoc(userDoc, {
+        hold: userSample.hold,
+        holdCount: userSample.holdCount,
+        flight: JSON.stringify(userSample.flight),
+        flightCount: JSON.stringify(userSample.flightCount),
+        lastUpdated: Date.now()
+      }, { merge: true });
+
+      status.style.color = "green";
+      status.textContent = "Data successfully saved!";
+    } catch (e) {
+      status.style.color = "red";
+      status.textContent = "Error saving data. Check console.";
+      console.error(e);
+    }
+  };
 </script>
+
 </body>
 </html>
