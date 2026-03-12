@@ -60,9 +60,13 @@
     constructor() { this.reset(); }
     reset() {
       this.hold = new Array(26).fill(0); 
+      this.holdM2 = new Array(26).fill(0);
       this.holdCount = new Array(26).fill(0);
+      
       this.flight = Array.from({length:26}, () => new Array(26).fill(0));
+      this.flightM2 = Array.from({length:26}, () => new Array(26).fill(0));
       this.flightCount = Array.from({length:26}, () => new Array(26).fill(0));
+      
       this.released = { key: null, time: null };
       this.pressed = {}; 
       this.active = false; 
@@ -70,8 +74,10 @@
     }
     load(d) {
       if(d.hold) this.hold = d.hold; 
+      if(d.holdM2) this.holdM2 = d.holdM2;
       if(d.holdCount) this.holdCount = d.holdCount;
       if(d.flight) this.flight = JSON.parse(d.flight); 
+      if(d.flightM2) this.flightM2 = JSON.parse(d.flightM2);
       if(d.flightCount) this.flightCount = JSON.parse(d.flightCount);
     }
   }
@@ -79,31 +85,46 @@
   const s = new Stats();
   let user = "";
 
+  const updateWelford = (avgArr, m2Arr, countArr, i, val, j = null) => {
+    let oldAvg, oldM2, n;
+    if (j !== null) {
+      oldAvg = avgArr[i][j];
+      oldM2 = m2Arr[i][j];
+      n = ++countArr[i][j];
+    } else {
+      oldAvg = avgArr[i];
+      oldM2 = m2Arr[i];
+      n = ++countArr[i];
+    }
+
+    const delta = val - oldAvg;
+    const newAvg = oldAvg + delta / n;
+    const delta2 = val - newAvg;
+    const newM2 = oldM2 + delta * delta2;
+
+    if (j !== null) {
+      avgArr[i][j] = newAvg;
+      m2Arr[i][j] = newM2;
+    } else {
+      avgArr[i] = newAvg;
+      m2Arr[i] = newM2;
+    }
+  };
+
   const handlePress = (i, now) => {
     if (s.released.key !== null && s.released.time !== null) {
-      const li = s.released.key;
-      const flightVal = now - s.released.time;
-      s.flightCount[li][i]++;
-      s.flight[li][i] += (flightVal - s.flight[li][i]) / s.flightCount[li][i];
+      updateWelford(s.flight, s.flightM2, s.flightCount, s.released.key, now - s.released.time, i);
     }
     s.pressed[i] = now;
   };
 
   const handleRelease = (i, now) => {
     if (!s.pressed[i]) return;
-    
-    // Calculate Rollovers (Negative Flight)
     Object.keys(s.pressed).forEach(pKeyStr => {
       const pKey = parseInt(pKeyStr);
-      if (pKey !== i) {
-        const flightVal = s.pressed[pKey] - now;
-        s.flightCount[pKey][i]++;
-        s.flight[pKey][i] += (flightVal - s.flight[pKey][i]) / s.flightCount[pKey][i];
-      }
+      if (pKey !== i) updateWelford(s.flight, s.flightM2, s.flightCount, pKey, s.pressed[pKey] - now, i);
     });
-
-    s.holdCount[i]++;
-    s.hold[i] += (now - s.pressed[i] - s.hold[i]) / s.holdCount[i];
+    updateWelford(s.hold, s.holdM2, s.holdCount, i, now - s.pressed[i]);
     s.released = { key: i, time: now };
     delete s.pressed[i];
   };
@@ -124,8 +145,7 @@
     if (!s.active || s.paused || !e.key.match(/^[a-zA-Z]$/)) return;
     const i = e.key.toLowerCase().charCodeAt(0) - 97;
     const now = Date.now() / 1000;
-
-    if (e.repeat) handleRelease(i, now); // Force end the previous pulse
+    if (e.repeat) handleRelease(i, now);
     handlePress(i, now);
   });
 
@@ -149,9 +169,15 @@
   window.stopAndSave = async () => {
     s.active = false;
     document.getElementById("status-text").textContent = "Saving...";
+
+    // Calculate actual Standard Deviations for the DB record
+    const holdSD = s.holdM2.map((m2, i) => s.holdCount[i] > 1 ? Math.sqrt(m2 / s.holdCount[i]) : 0);
+    const flightSD = s.flightM2.map((row, i) => row.map((m2, j) => s.flightCount[i][j] > 1 ? Math.sqrt(m2 / s.flightCount[i][j]) : 0));
+
     await setDoc(doc(db, "users", user), {
-      hold: s.hold, holdCount: s.holdCount,
-      flight: JSON.stringify(s.flight), flightCount: JSON.stringify(s.flightCount),
+      hold: s.hold, holdCount: s.holdCount, holdM2: s.holdM2, holdSD: holdSD,
+      flight: JSON.stringify(s.flight), flightCount: JSON.stringify(s.flightCount), 
+      flightM2: JSON.stringify(s.flightM2), flightSD: JSON.stringify(flightSD),
       lastUpdated: Date.now()
     }, { merge: true });
     location.reload();
