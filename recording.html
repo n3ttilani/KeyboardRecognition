@@ -9,11 +9,8 @@
     #login-screen, #recording-screen { background: #2a2a2a; padding: 40px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; gap: 15px; width: 350px; }
     #recording-screen { display: none; }
     input { padding: 12px; font-size: 16px; border-radius: 8px; border: none; width: 80%; background: #3d3d3d; color: white; outline: none; }
-    
-    /* Updated Start Button with Mic Icon */
     .start-btn { background-color: #27ae60; color: white; font-size: 20px; cursor: pointer; transition: 0.3s; width: 60px; height: 60px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; }
     .start-btn:hover { background-color: #2ecc71; transform: scale(1.1); }
-    
     .mic-icon { font-size: 80px; color: #e74c3c; animation: pulse-mic 1.5s infinite; margin: 20px 0; }
     @keyframes pulse-mic { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.7; } 100% { transform: scale(1); opacity: 1; } }
     .controls { display: flex; gap: 20px; margin-top: 20px; }
@@ -62,14 +59,21 @@
   class Stats {
     constructor() { this.reset(); }
     reset() {
-      this.hold = new Array(26).fill(0); this.holdCount = new Array(26).fill(0);
+      this.hold = new Array(26).fill(0); 
+      this.holdCount = new Array(26).fill(0);
       this.flight = Array.from({length:26}, () => new Array(26).fill(0));
       this.flightCount = Array.from({length:26}, () => new Array(26).fill(0));
-      this.last = null; this.pressed = {}; this.active = false; this.paused = false;
+      this.pressed = {}; 
+      this.lastReleasedIndex = null;
+      this.lastReleaseTime = null;
+      this.active = false; 
+      this.paused = false;
     }
     load(d) {
-      if(d.hold) this.hold = d.hold; if(d.holdCount) this.holdCount = d.holdCount;
-      if(d.flight) this.flight = JSON.parse(d.flight); if(d.flightCount) this.flightCount = JSON.parse(d.flightCount);
+      if(d.hold) this.hold = d.hold; 
+      if(d.holdCount) this.holdCount = d.holdCount;
+      if(d.flight) this.flight = JSON.parse(d.flight); 
+      if(d.flightCount) this.flightCount = JSON.parse(d.flightCount);
     }
   }
 
@@ -92,19 +96,30 @@
     if (!s.active || s.paused || !e.key.match(/^[a-zA-Z]$/)) return;
     const i = e.key.toLowerCase().charCodeAt(0) - 97;
     const now = Date.now() / 1000;
-    if (s.last) {
-      const [li, lt] = s.last; s.flightCount[li][i]++;
-      s.flight[li][i] += (now - lt - s.flight[li][i]) / s.flightCount[li][i];
+
+    // Flight Time with Rollover Support: Current Press - Last Release
+    if (s.lastReleaseTime !== null && s.lastReleasedIndex !== null) {
+      const li = s.lastReleasedIndex;
+      const currentFlight = now - s.lastReleaseTime;
+      s.flightCount[li][i]++;
+      s.flight[li][i] += (currentFlight - s.flight[li][i]) / s.flightCount[li][i];
     }
-    s.pressed[i] = now; s.last = [i, now];
+    
+    s.pressed[i] = now;
   });
 
   window.addEventListener("keyup", (e) => {
     if (!s.active || s.paused || !e.key.match(/^[a-zA-Z]$/)) return;
     const i = e.key.toLowerCase().charCodeAt(0) - 97;
+    const now = Date.now() / 1000;
+
     if (s.pressed[i]) {
       s.holdCount[i]++;
-      s.hold[i] += (Date.now()/1000 - s.pressed[i] - s.hold[i]) / s.holdCount[i];
+      s.hold[i] += (now - s.pressed[i] - s.hold[i]) / s.holdCount[i];
+      
+      // Mark this key as the "Previous Release" for the next key pressed
+      s.lastReleasedIndex = i;
+      s.lastReleaseTime = now;
       delete s.pressed[i];
     }
   });
