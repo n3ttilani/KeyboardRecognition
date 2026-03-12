@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Who is Typing?</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Segoe UI', sans-serif; background-color: #1a1a1a; color: white; }
+    #recognition-screen { background: #2a2a2a; padding: 40px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 450px; }
+    #identity-display { font-size: 48px; color: #2ecc71; margin: 20px 0; font-weight: bold; min-height: 60px; }
+    #confidence-bar { width: 100%; background: #3d3d3d; height: 10px; border-radius: 5px; margin-top: 10px; overflow: hidden; }
+    #confidence-fill { width: 0%; height: 100%; background: #2ecc71; transition: 0.3s; }
+    textarea { width: 90%; height: 100px; margin-top: 20px; background: #3d3d3d; border: none; border-radius: 8px; color: white; padding: 15px; font-size: 18px; resize: none; outline: none; }
+    .label { color: #aaa; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+
+<div id="recognition-screen">
+  <div class="label">Current Identification</div>
+  <div id="identity-display">Scanning...</div>
+  <div id="confidence-bar"><div id="confidence-fill"></div></div>
+  <textarea id="typingArea" placeholder="Start typing here to identify yourself..."></textarea>
+  <p id="status-text" style="color: #888; margin-top: 15px;">Gathering biometric evidence...</p>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+  import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDp-K4PE_GhabxuoZN052PghmVkbz8tT_Q",
+    authDomain: "keyboard-recognition.firebaseapp.com",
+    projectId: "keyboard-recognition",
+    storageBucket: "keyboard-recognition.firebasestorage.app",
+    messagingSenderId: "34676587550",
+    appId: "1:34676587550:web:162c8e02d08393188cc20f"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  let profiles = [];
+  let scores = {}; // Log-likelihood scores for each user
+  let pressed = {};
+  let lastReleased = { key: null, time: null };
+
+  // Load all user profiles from Firebase
+  const loadProfiles = async () => {
+    const querySnapshot = await getDocs(collection(db, "users"));
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      profiles.push({
+        name: doc.id,
+        hold: data.hold,
+        holdSD: data.holdSD,
+        flight: JSON.parse(data.flight),
+        flightSD: JSON.parse(data.flightSD)
+      });
+      scores[doc.id] = 0; // Initialize scores
+    });
+    document.getElementById("status-text").textContent = `Loaded ${profiles.length} profiles.`;
+  };
+
+  const getLogLikelihood = (x, mean, sd) => {
+    if (!sd || sd < 0.001) sd = 0.01; // Minimum floor to prevent Infinity
+    const exponent = -0.5 * Math.pow((x - mean) / sd, 2);
+    // Gaussian PDF in log-space: -log(sd * sqrt(2pi)) + exponent
+    return -Math.log(sd * Math.sqrt(2 * Math.PI)) + exponent;
+  };
+
+  const updateIdentity = (metric, i, j, val) => {
+    profiles.forEach(p => {
+      let mean, sd;
+      if (metric === 'hold') {
+        mean = p.hold[i];
+        sd = p.holdSD[i];
+      } else {
+        mean = p.flight[i][j];
+        sd = p.flightSD[i][j];
+      }
+
+      if (mean > 0) {
+        scores[p.name] += getLogLikelihood(val, mean, sd);
+      }
+    });
+    displayTopCandidate();
+  };
+
+  const displayTopCandidate = () => {
+    const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+    const [topName, topScore] = sorted[0];
+    const runnerUpScore = sorted[1] ? sorted[1][1] : -Infinity;
+
+    const gap = topScore - runnerUpScore;
+    const confidence = Math.min(100, (gap / 20) * 100); // 20 is the "Certainty Threshold"
+
+    document.getElementById("identity-display").textContent = topName;
+    document.getElementById("confidence-fill").style.width = confidence + "%";
+  };
+
+  document.getElementById("typingArea").addEventListener("keydown", (e) => {
+    if (!e.key.match(/^[a-zA-Z]$/)) return;
+    const i = e.key.toLowerCase().charCodeAt(0) - 97;
+    const now = Date.now() / 1000;
+
+    if (lastReleased.key !== null) {
+      updateIdentity('flight', lastReleased.key, i, now - lastReleased.time);
+    }
+    pressed[i] = now;
+  });
+
+  document.getElementById("typingArea").addEventListener("keyup", (e) => {
+    if (!e.key.match(/^[a-zA-Z]$/)) return;
+    const i = e.key.toLowerCase().charCodeAt(0) - 97;
+    const now = Date.now() / 1000;
+
+    if (pressed[i]) {
+      updateIdentity('hold', i, null, now - pressed[i]);
+      lastReleased = { key: i, time: now };
+      delete pressed[i];
+    }
+  });
+
+  loadProfiles();
+</script>
+</body>
+</html>
