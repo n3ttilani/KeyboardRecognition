@@ -2,30 +2,29 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Who is Typing?</title>
+  <title>Identity Scanner</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
     body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Segoe UI', sans-serif; background-color: #1a1a1a; color: white; }
-    #recognition-screen { background: #2a2a2a; padding: 40px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 450px; }
-    #identity-display { font-size: 48px; color: #2ecc71; margin: 20px 0; font-weight: bold; min-height: 60px; }
-    #confidence-bar { width: 100%; background: #3d3d3d; height: 10px; border-radius: 5px; margin-top: 10px; overflow: hidden; }
-    #confidence-fill { width: 0%; height: 100%; background: #2ecc71; transition: 0.3s; }
-    textarea { width: 90%; height: 100px; margin-top: 20px; background: #3d3d3d; border: none; border-radius: 8px; color: white; padding: 15px; font-size: 18px; resize: none; outline: none; }
-    .label { color: #aaa; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+    #recognition-screen { background: #2a2a2a; padding: 40px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 450px; display: flex; flex-direction: column; align-items: center; }
+    #identity-display { font-size: 32px; color: #2ecc71; margin: 10px 0 20px 0; font-weight: bold; min-height: 40px; }
+    #confidence-bar { width: 100%; background: #3d3d3d; height: 8px; border-radius: 4px; margin-bottom: 20px; overflow: hidden; }
+    #confidence-fill { width: 0%; height: 100%; background: #2ecc71; transition: 0.4s ease; }
+    textarea { width: 90%; height: 120px; background: #3d3d3d; border: none; border-radius: 8px; color: white; padding: 15px; font-size: 18px; resize: none; outline: none; }
+    .fingerprint-icon { font-size: 70px; color: #2ecc71; margin-bottom: 10px; }
+    #status-text { color: #666; font-size: 14px; margin-top: 15px; }
   </style>
 </head>
 <body>
 
 <div id="recognition-screen">
-  <div style="font-size: 80px; color: #2ecc71; margin-bottom: 20px;">
-    <i class="fas fa-fingerprint"></i>
-  </div>
+  <div class="fingerprint-icon"><i class="fas fa-fingerprint"></i></div>
   <h2 id="identity-display">Scanning...</h2>
   <div id="confidence-bar"><div id="confidence-fill"></div></div>
-  <textarea id="typingArea" placeholder="Start typing..."></textarea>
-  <p id="status-text" style="color: #666; margin-top: 20px;">
-    Analyzing rhythm patterns
-  </p>
+  
+  <textarea id="typingArea" placeholder="Start typing to identify..."></textarea>
+  
+  <p id="status-text">Waiting for rhythm input</p>
 </div>
 
 <script type="module">
@@ -45,35 +44,39 @@
   const db = getFirestore(app);
 
   let profiles = [];
-  let scores = {}; // Log-likelihood scores for each user
+  let scores = {}; 
   let pressed = {};
   let lastReleased = { key: null, time: null };
+  let eventCount = 0;
 
-  // Load all user profiles from Firebase
   const loadProfiles = async () => {
-    const querySnapshot = await getDocs(collection(db, "users"));
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      profiles.push({
-        name: doc.id,
-        hold: data.hold,
-        holdSD: data.holdSD,
-        flight: JSON.parse(data.flight),
-        flightSD: JSON.parse(data.flightSD)
+    try {
+      const querySnapshot = await getDocs(collection(db, "users"));
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        profiles.push({
+          name: doc.id,
+          hold: data.hold,
+          holdSD: data.holdSD,
+          flight: JSON.parse(data.flight),
+          flightSD: JSON.parse(data.flightSD)
+        });
+        scores[doc.id] = 0;
       });
-      scores[doc.id] = 0; // Initialize scores
-    });
-    document.getElementById("status-text").textContent = `Loaded ${profiles.length} profiles.`;
+      document.getElementById("status-text").textContent = `Ready: ${profiles.length} profiles loaded.`;
+    } catch (e) {
+      document.getElementById("status-text").textContent = "Error loading database.";
+    }
   };
 
   const getLogLikelihood = (x, mean, sd) => {
-    if (!sd || sd < 0.001) sd = 0.01; // Minimum floor to prevent Infinity
-    const exponent = -0.5 * Math.pow((x - mean) / sd, 2);
-    // Gaussian PDF in log-space: -log(sd * sqrt(2pi)) + exponent
-    return -Math.log(sd * Math.sqrt(2 * Math.PI)) + exponent;
+    const floorSD = Math.max(sd, 0.005); // Prevent division by zero
+    const exponent = -0.5 * Math.pow((x - mean) / floorSD, 2);
+    return -Math.log(floorSD * Math.sqrt(2 * Math.PI)) + exponent;
   };
 
   const updateIdentity = (metric, i, j, val) => {
+    eventCount++;
     profiles.forEach(p => {
       let mean, sd;
       if (metric === 'hold') {
@@ -85,10 +88,12 @@
       }
 
       if (mean > 0) {
-        scores[p.name] += getLogLikelihood(val, mean, sd);
+        // Apply 2% decay to previous scores so new typing carries more weight
+        scores[p.name] = (scores[p.name] * 0.98) + getLogLikelihood(val, mean, sd);
       }
     });
-    displayTopCandidate();
+
+    if (eventCount > 5) displayTopCandidate();
   };
 
   const displayTopCandidate = () => {
@@ -97,13 +102,16 @@
     const runnerUpScore = sorted[1] ? sorted[1][1] : -Infinity;
 
     const gap = topScore - runnerUpScore;
-    const confidence = Math.min(100, (gap / 20) * 100); // 20 is the "Certainty Threshold"
+    // Certainty threshold of 15; anything above that is "locked in"
+    const confidence = Math.min(100, (gap / 15) * 100);
 
-    document.getElementById("identity-display").textContent = topName;
+    document.getElementById("identity-display").textContent = gap > 2 ? topName : "Scanning...";
     document.getElementById("confidence-fill").style.width = confidence + "%";
+    document.getElementById("status-text").textContent = `Analyzed ${eventCount} events`;
   };
 
-  document.getElementById("typingArea").addEventListener("keydown", (e) => {
+  const area = document.getElementById("typingArea");
+  area.addEventListener("keydown", (e) => {
     if (!e.key.match(/^[a-zA-Z]$/)) return;
     const i = e.key.toLowerCase().charCodeAt(0) - 97;
     const now = Date.now() / 1000;
@@ -114,7 +122,7 @@
     pressed[i] = now;
   });
 
-  document.getElementById("typingArea").addEventListener("keyup", (e) => {
+  area.addEventListener("keyup", (e) => {
     if (!e.key.match(/^[a-zA-Z]$/)) return;
     const i = e.key.toLowerCase().charCodeAt(0) - 97;
     const now = Date.now() / 1000;
