@@ -17,11 +17,15 @@
 <body>
 
 <div id="recognition-screen">
-  <div class="label">Current Identification</div>
-  <div id="identity-display">Scanning...</div>
+  <div style="font-size: 80px; color: #2ecc71; margin-bottom: 20px;">
+    <i class="fas fa-fingerprint"></i>
+  </div>
+  <h2 id="identity-display">Scanning...</h2>
   <div id="confidence-bar"><div id="confidence-fill"></div></div>
-  <textarea id="typingArea" placeholder="Start typing here to identify yourself..."></textarea>
-  <p id="status-text" style="color: #888; margin-top: 15px;">Gathering biometric evidence...</p>
+  <textarea id="typingArea" placeholder="Start typing..."></textarea>
+  <p id="status-text" style="color: #666; margin-top: 20px;">
+    Analyzing rhythm patterns
+  </p>
 </div>
 
 <script type="module">
