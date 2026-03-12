@@ -10,7 +10,9 @@
     #identity-display { font-size: 32px; color: #2ecc71; margin: 10px 0 20px 0; font-weight: bold; min-height: 40px; }
     #confidence-bar { width: 100%; background: #3d3d3d; height: 8px; border-radius: 4px; margin-bottom: 20px; overflow: hidden; }
     #confidence-fill { width: 0%; height: 100%; background: #2ecc71; transition: 0.4s ease; }
-    textarea { width: 90%; height: 120px; background: #3d3d3d; border: none; border-radius: 8px; color: white; padding: 15px; font-size: 18px; resize: none; outline: none; }
+    textarea { width: 90%; height: 120px; background: #3d3d3d; border: none; border-radius: 8px; color: white; padding: 15px; font-size: 18px; resize: none; outline: none; margin-bottom: 20px; }
+    .check-btn { background: transparent; color: #2ecc71; border: 2px solid #2ecc71; padding: 10px 20px; border-radius: 30px; cursor: pointer; transition: 0.3s; }
+    .check-btn:hover { background: #2ecc71; color: white; }
     .fingerprint-icon { font-size: 70px; color: #2ecc71; margin-bottom: 10px; }
     #status-text { color: #666; font-size: 14px; margin-top: 15px; }
   </style>
@@ -22,9 +24,10 @@
   <h2 id="identity-display">Scanning...</h2>
   <div id="confidence-bar"><div id="confidence-fill"></div></div>
   
-  <textarea id="typingArea" placeholder="Start typing to identify..."></textarea>
+  <textarea id="typingArea" placeholder="Start typing..."></textarea>
   
-  <p id="status-text">Waiting for rhythm input</p>
+  <button class="check-btn" onclick="checkNow()">Check Now</button>
+  <p id="status-text">Waiting for input</p>
 </div>
 
 <script type="module">
@@ -43,82 +46,55 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  let profiles = [];
-  let scores = {}; 
-  let pressed = {};
-  let lastReleased = { key: null, time: null };
-  let eventCount = 0;
+  let profiles = [], scores = {}, pressed = {}, lastReleased = { key: null, time: null }, eventCount = 0;
 
   const loadProfiles = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, "users"));
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        profiles.push({
-          name: doc.id,
-          hold: data.hold,
-          holdSD: data.holdSD,
-          flight: JSON.parse(data.flight),
-          flightSD: JSON.parse(data.flightSD)
-        });
-        scores[doc.id] = 0;
-      });
-      document.getElementById("status-text").textContent = `Ready: ${profiles.length} profiles loaded.`;
-    } catch (e) {
-      document.getElementById("status-text").textContent = "Error loading database.";
-    }
+    const querySnapshot = await getDocs(collection(db, "users"));
+    querySnapshot.forEach((doc) => {
+      const d = doc.data();
+      profiles.push({ name: doc.id, hold: d.hold, holdSD: d.holdSD, flight: JSON.parse(d.flight), flightSD: JSON.parse(d.flightSD) });
+      scores[doc.id] = 0;
+    });
+    document.getElementById("status-text").textContent = `${profiles.length} profiles loaded.`;
   };
 
   const getLogLikelihood = (x, mean, sd) => {
-    const floorSD = Math.max(sd, 0.005); // Prevent division by zero
-    const exponent = -0.5 * Math.pow((x - mean) / floorSD, 2);
-    return -Math.log(floorSD * Math.sqrt(2 * Math.PI)) + exponent;
+    const floorSD = Math.max(sd, 0.005);
+    return -Math.log(floorSD * Math.sqrt(2 * Math.PI)) + (-0.5 * Math.pow((x - mean) / floorSD, 2));
   };
 
-  const updateIdentity = (metric, i, j, val) => {
+  const processEvent = (metric, i, j, val) => {
     eventCount++;
     profiles.forEach(p => {
-      let mean, sd;
-      if (metric === 'hold') {
-        mean = p.hold[i];
-        sd = p.holdSD[i];
-      } else {
-        mean = p.flight[i][j];
-        sd = p.flightSD[i][j];
-      }
-
-      if (mean > 0) {
-        // Apply 2% decay to previous scores so new typing carries more weight
-        scores[p.name] = (scores[p.name] * 0.98) + getLogLikelihood(val, mean, sd);
-      }
+      let mean = metric === 'hold' ? p.hold[i] : p.flight[i][j];
+      let sd = metric === 'hold' ? p.holdSD[i] : p.flightSD[i][j];
+      if (mean > 0) scores[p.name] += getLogLikelihood(val, mean, sd);
     });
-
-    if (eventCount > 5) displayTopCandidate();
+    updateUI(false);
   };
 
-  const displayTopCandidate = () => {
+  const updateUI = (force) => {
+    if (eventCount < 5) return;
     const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-    const [topName, topScore] = sorted[0];
-    const runnerUpScore = sorted[1] ? sorted[1][1] : -Infinity;
-
-    const gap = topScore - runnerUpScore;
-    // Certainty threshold of 15; anything above that is "locked in"
+    const gap = sorted[0][1] - (sorted[1] ? sorted[1][1] : -Infinity);
     const confidence = Math.min(100, (gap / 15) * 100);
-
-    document.getElementById("identity-display").textContent = gap > 2 ? topName : "Scanning...";
+    
     document.getElementById("confidence-fill").style.width = confidence + "%";
-    document.getElementById("status-text").textContent = `Analyzed ${eventCount} events`;
+    document.getElementById("status-text").textContent = `Events: ${eventCount}`;
+
+    if (force || confidence >= 100) {
+        document.getElementById("identity-display").textContent = sorted[0][0];
+    }
   };
+
+  window.checkNow = () => updateUI(true);
 
   const area = document.getElementById("typingArea");
   area.addEventListener("keydown", (e) => {
     if (!e.key.match(/^[a-zA-Z]$/)) return;
     const i = e.key.toLowerCase().charCodeAt(0) - 97;
     const now = Date.now() / 1000;
-
-    if (lastReleased.key !== null) {
-      updateIdentity('flight', lastReleased.key, i, now - lastReleased.time);
-    }
+    if (lastReleased.key !== null) processEvent('flight', lastReleased.key, i, now - lastReleased.time);
     pressed[i] = now;
   });
 
@@ -126,9 +102,8 @@
     if (!e.key.match(/^[a-zA-Z]$/)) return;
     const i = e.key.toLowerCase().charCodeAt(0) - 97;
     const now = Date.now() / 1000;
-
     if (pressed[i]) {
-      updateIdentity('hold', i, null, now - pressed[i]);
+      processEvent('hold', i, null, now - pressed[i]);
       lastReleased = { key: i, time: now };
       delete pressed[i];
     }
